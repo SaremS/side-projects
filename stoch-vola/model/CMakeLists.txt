@@ -41,6 +41,16 @@ add_executable(
 
 target_link_libraries(unittest_particles gtest_main)
 
+add_executable(
+  unittest_utilfuns
+  include/statistics/util_funs.h
+  lib/statistics/util_funs.cpp
+  tests/unittest_util_funs.cpp
+)
+
+target_link_libraries(unittest_utilfuns gtest_main)
+
 include(GoogleTest)
 gtest_discover_tests(unittest_normal_distribution)
 gtest_discover_tests(unittest_particles)
+gtest_discover_tests(unittest_utilfuns)

@@ -10,6 +10,13 @@
 
 template <typename T>
 class Particles {
+  private:
+    std::vector<std::vector<T>> particles_; //vector of particles of given length
+    unsigned int particleCount_;
+    unsigned int particleLength_;
+    mutable std::mt19937 generator_;
+    void setSeed(unsigned int seed) const;
+
   public:
     Particles(std::vector<T> initial_particles);
 
@@ -32,13 +39,6 @@ class Particles {
 
     unsigned int getParticleCount() const;
     unsigned int getParticleLength() const;
-
-  private:
-    std::vector<std::vector<T>> particles_; //vector of particles of given length
-    unsigned int particleCount_;
-    unsigned int particleLength_;
-    mutable std::mt19937 generator_;
-    void setSeed(unsigned int seed) const;
 };
 
 #endif
