@@ -19,6 +19,9 @@ class StochasticVolatilityModel {
     double sigma_;
 
   public:
-    Particles<double> particleFilter(const std::vector<double>& y, const unsigned int& M, const unsigned int& seed);
-    double loglikelihood(const std::vector<double>& y, const unsigned int& M, const unsigned int& seed);
-}
+    StochasticVolatilityModel(double mu, double phi, double sigma);
+    Particles<double> particleFilter(const std::vector<double>& y, const unsigned int& M, const unsigned int& seed = 123);
+    double logLikelihood(const std::vector<double>& y, const unsigned int& M, const unsigned int& seed = 123);
+};
+
+#endif

@@ -1,6 +1,7 @@
 #include <vector>
 #include <stdexcept>
 #include <random>
+#include <functional>
 
 #include "statistics/particles.h"
 #include "statistics/normal_distribution.h"
@@ -14,6 +15,13 @@ Particles<T>::Particles(std::vector<T> initial_particles) {
     particles_.push_back(temp);
   }
   particleLength_ = 1;
+}
+
+template <typename T>
+Particles<T>::Particles(std::vector<std::vector<T>> initial_particles) {
+  particles_ = initial_particles;
+  particleCount_ = initial_particles.size();
+  particleLength_ = initial_particles[0].size();
 }
 
 template <typename T>
@@ -53,13 +61,27 @@ void Particles<T>::applyTransformation(T (*func)(T)) {
 }
 
 template <typename T>
-std::vector<T> Particles<T>::reduceParticles(T (*func)(std::vector<T>)) const {
+std::vector<T> Particles<T>::reduceParticles(const std::function<T(std::vector<T>)>& func) const {
   std::vector<T> result;
 
   for (int i=0; i<particleLength_; i++) {
     std::vector<T> temp;
     for (int j=0; j<particleCount_; j++) {
       temp.push_back(particles_[j][i]);
+    }
+    result.push_back(func(temp));
+  }
+  return result;
+}
+
+template <typename T>
+std::vector<T> Particles<T>::reduceTraces(const std::function<T(std::vector<T>)>& func) const {
+  std::vector<T> result;
+
+  for (int i=0; i<particleCount_; i++) {
+    std::vector<T> temp;
+    for (int j=0; j<particleLength_; j++) {
+      temp.push_back(particles_[i][j]);
     }
     result.push_back(func(temp));
   }
@@ -90,6 +112,31 @@ void Particles<T>::resampleParticles(const std::vector<double>& weights, const u
     new_particles.push_back(particles_[index]);
   }
   particles_ = new_particles;
+}
+
+template <typename T>
+std::vector<T> Particles<T>::getLatestParticlesAsVector() const {
+  std::vector<T> result;
+  for (int i=0; i<particleCount_; i++) {
+    result.push_back(particles_[i][particleLength_-1]);
+  }
+  return result;
+}
+
+template <typename T>
+Particles<T> Particles<T>::getParticlesWithoutInit() const {
+  if (particleLength_ == 1) {
+    throw std::invalid_argument("Cannot remove initial particles.");
+  }
+   
+  std::vector<std::vector<T>> new_particles = particles_;
+
+  for (std::vector<T>& vec : new_particles) {
+    vec.erase(vec.begin());
+  }
+
+  Particles<T> result = Particles<T>(new_particles);
+  return result;
 }
 
 template <typename T>

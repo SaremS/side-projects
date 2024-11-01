@@ -1,8 +1,10 @@
 #include <vector>
+#include <algorithm>
 
 #include "gtest/gtest.h"
 #include "statistics/normal_distribution.h"
 #include "statistics/particles.h"
+
 
 TEST(Particles, DefaultConstructor) {
   std::vector<double> initial_particles = {1.0, 2.0, 3.0};
@@ -58,6 +60,26 @@ TEST(Particles, appendParticles) {
   pt.appendParticles(test_particles);
 
   EXPECT_TRUE(p == pt);
+}
+
+TEST(Particles, getLatestParticlesAsVector) {
+  std::vector<double> initial_particles = {1.0, 2.0, 3.0};
+  Particles<double> p(initial_particles);
+  std::vector<double> particles = p.getLatestParticlesAsVector();
+  EXPECT_TRUE(particles == initial_particles);
+}
+
+TEST(Particles, getLatestParticlesAsVectorNonReference) {
+  std::vector<double> initial_particles = {1.0, 2.0, 3.0};
+  Particles<double> p(initial_particles);
+  std::vector<double> particles = p.getLatestParticlesAsVector();
+
+  std::transform(particles.begin(), particles.end(), particles.begin(), [](double v) {return v*2.0;});
+  std::vector<double> transformed_particles = {2.0, 4.0, 6.0};
+  EXPECT_TRUE(particles == transformed_particles); //verify transform has happened
+
+  std::vector<double> particles2 = p.getLatestParticlesAsVector();
+  EXPECT_TRUE(particles2 == initial_particles); //verify that transforming output does not affect particles
 }
 
 TEST(Particles, resampleParticles) {

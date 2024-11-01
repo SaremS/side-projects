@@ -5,6 +5,7 @@
 #include <vector>
 #include <cmath>
 #include <type_traits>
+#include <functional>
 
 #include "normal_distribution.h"
 
@@ -19,6 +20,7 @@ class Particles {
 
   public:
     Particles(std::vector<T> initial_particles);
+    Particles(std::vector<std::vector<T>> initial_particles);
 
     template <typename = std::enable_if_t<std::is_same<T, double>::value>>
     Particles(const NormalDistribution& dist, const unsigned int& nParticles, const unsigned int& seed = 123) {
@@ -34,8 +36,11 @@ class Particles {
     void appendParticles(std::vector<T> new_particles);
     void resampleParticles(const std::vector<double>& weights, const unsigned int& seed = 123);
     void applyTransformation(T (*func)(T));
-    std::vector<T> reduceParticles(T (*func)(std::vector<T>)) const;
+    std::vector<T> reduceParticles(const std::function<T(std::vector<T>)>& func) const; //reduce over particles
+    std::vector<T> reduceTraces(const std::function<T(std::vector<T>)>& func) const; //reduce over all elements of a particle
     bool operator==(const Particles<T>& other) const;
+    std::vector<T> getLatestParticlesAsVector() const;
+    Particles<T> getParticlesWithoutInit() const;
 
     unsigned int getParticleCount() const;
     unsigned int getParticleLength() const;
