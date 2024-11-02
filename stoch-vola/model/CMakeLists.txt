@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.4...3.18)
 
+set(CMAKE_CXX_STANDARD 14 CACHE STRING "C++ version selection")
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 project(stochastic_volatility_model
 	VERSION 0.1
 	DESCRIPTION "Stochastic volatility model with particle filter and finite difference filter"
@@ -9,6 +12,29 @@ project(stochastic_volatility_model
 include_directories(include)
 include(FetchContent)
 
+
+FetchContent_Declare(
+  pybind11
+  GIT_REPOSITORY https://github.com/pybind/pybind11
+  GIT_TAG        v2.13.6
+)
+
+FetchContent_MakeAvailable(pybind11)
+
+pybind11_add_module(
+  stochastic_volatility_model
+  include/model/stochastic_volatility_model.h
+  include/statistics/normal_distribution.h
+  include/statistics/particles.h
+  include/statistics/util_funs.h
+  lib/model/stochastic_volatility_model.cpp
+  lib/statistics/normal_distribution.cpp
+  lib/statistics/particles.cpp
+  lib/statistics/util_funs.cpp
+)
+
+target_compile_definitions(stochastic_volatility_model 
+                           PRIVATE VERSION_INFO=${EXAMPLE_VERSION_INFO})
 
 enable_testing()
 
@@ -39,7 +65,7 @@ add_executable(
   tests/unittest_particles.cpp
 )
 
-target_link_libraries(unittest_particles gtest_main)
+target_link_libraries(unittest_particles gtest_main pybind11::embed)
 
 add_executable(
   unittest_utilfuns
@@ -63,7 +89,7 @@ add_executable(
   tests/unittest_stochastic_volatility_model.cpp
 )
 
-target_link_libraries(unittest_stochastic_volatility_model gtest_main)
+target_link_libraries(unittest_stochastic_volatility_model gtest_main pybind11::embed)
 
 include(GoogleTest)
 gtest_discover_tests(unittest_normal_distribution)

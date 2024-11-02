@@ -42,6 +42,8 @@ class Particles {
     std::vector<T> getLatestParticlesAsVector() const;
     Particles<T> getParticlesWithoutInit() const;
 
+    std::vector<std::vector<T>> getParticlesAsNestedVector() const;
+
     unsigned int getParticleCount() const;
     unsigned int getParticleLength() const;
 };

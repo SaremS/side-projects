@@ -3,8 +3,8 @@
 #include <random>
 #include <functional>
 
-#include "statistics/particles.h"
-#include "statistics/normal_distribution.h"
+#include <statistics/particles.h>
+#include <statistics/normal_distribution.h>
 
 
 template <typename T>
@@ -137,6 +137,11 @@ Particles<T> Particles<T>::getParticlesWithoutInit() const {
 
   Particles<T> result = Particles<T>(new_particles);
   return result;
+}
+
+template <typename T>
+std::vector<std::vector<T>> Particles<T>::getParticlesAsNestedVector() const {
+  return particles_;
 }
 
 template <typename T>

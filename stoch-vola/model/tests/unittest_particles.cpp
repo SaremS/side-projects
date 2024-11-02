@@ -1,5 +1,6 @@
 #include <vector>
 #include <algorithm>
+#include <functional>
 
 #include "gtest/gtest.h"
 #include "statistics/normal_distribution.h"
@@ -49,6 +50,22 @@ TEST(Particles, reduceParticles) {
   EXPECT_EQ(means[0], 2.0);
 }
 
+TEST(Particles, reduceTraces) {
+  std::vector<double> initial_particles = {1.0, 2.0, 3.0};
+  Particles<double> p(initial_particles);
+  std::vector<double> means = p.reduceTraces([](std::vector<double> vec){
+        double result = 0;
+        for (auto const& v : vec) {
+          result += v;
+        }
+        return result / vec.size();
+      });
+  EXPECT_EQ(means.size(), 3);
+  EXPECT_EQ(means[0], 1.0);
+  EXPECT_EQ(means[1], 2.0);
+  EXPECT_EQ(means[2], 3.0);
+}
+
 TEST(Particles, appendParticles) {
   std::vector<double> initial_particles = {1.0, 2.0, 3.0};
   Particles<double> p(initial_particles);
@@ -67,6 +84,14 @@ TEST(Particles, getLatestParticlesAsVector) {
   Particles<double> p(initial_particles);
   std::vector<double> particles = p.getLatestParticlesAsVector();
   EXPECT_TRUE(particles == initial_particles);
+}
+
+TEST(Particles, GetParticlesAsNestedVector) {
+  std::vector<double> initial_particles = {1.0, 2.0, 3.0};
+  Particles<double> p(initial_particles);
+  std::vector<std::vector<double>> particles = p.getParticlesAsNestedVector();
+  EXPECT_TRUE(particles[0][0] == initial_particles[0]);
+
 }
 
 TEST(Particles, getLatestParticlesAsVectorNonReference) {
