@@ -3,6 +3,8 @@
 #include <stdexcept>
 #include <thread>
 #include <mutex>
+#include <span>
+#include <algorithm>
 
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
@@ -43,17 +45,42 @@ Particles<double> StochasticVolatilityModel::particleFilter(const std::vector<do
 
   for (int t=1; t<=T; t++) {
     std::vector<double> latestParticles = particles.getLatestParticlesAsVector(); //particles at t-1
-    std::vector<double> weights; //weights can be calculated inside loop as well
+    std::vector<double> weights(nParticles); //weights can be calculated inside loop as well                
     double weightSum = 0.0; //to divide later on
-    for (double& p : latestParticles) {
-      p = mu + phi * (p - mu) + NormalDistribution(0.0, sigma).sample(1, loopSeed)[0];
 
-      double likelihood = NormalDistribution(0.0, std::exp(p/2.0)).pdf(y[t-1]);
-      weights.push_back(likelihood);
-      weightSum += likelihood;
+    std::vector<std::thread> threads;
 
-      loopSeed++;
+    std::vector<int> seeds;
+    for (int i=0; i<nParticles; i++) {
+      seeds.push_back(loopSeed + i);
+      loopSeed += 1;
     }
+
+    unsigned int numThreads = std::max(nParticles/10,static_cast<unsigned int>(1));
+    unsigned int batchSize = (nParticles + numThreads - 1) / numThreads;
+
+    for (size_t i = 0; i < numThreads; ++i) {
+        unsigned int start = i * batchSize;
+        unsigned int end = std::min(start + batchSize, nParticles);
+
+        if (start < nParticles) { 
+            std::span<double> particleSpan(latestParticles.begin() + start, end - start);
+            std::span<double> weightSpan(weights.begin() + start, end - start);
+            std::span<int> seedspan(seeds.begin() + start, end - start);
+
+
+            threads.emplace_back(&StochasticVolatilityModel::process_particle, this,
+                              particleSpan, weightSpan,
+                              std::ref(weightSum), std::cref(y[t-1]), seedspan,
+                              std::cref(mu), std::cref(phi), std::cref(sigma));
+        }
+    }
+
+
+    for (auto& thread : threads) {
+        thread.join();
+    }
+
     particles.appendParticles(latestParticles); //particles at t
 
     if (weightSum > 0.0) { //do nothing in the degenerate case
@@ -90,4 +117,23 @@ double StochasticVolatilityModel::logLikelihood(const std::vector<double>& y, co
   }
 
   return loglikelihood;
+}
+
+void StochasticVolatilityModel::process_particle(std::span<double> particles, std::span<double> weights, double& weightSum, const double& observation,
+    const std::span<int> loopSeeds,
+    const double& mu, const double& phi, const double& sigma) {
+    
+    int N = particles.size();
+    int localWeightSum = 0.0;
+
+    for (int i=0; i<N; i++) {
+      particles[i] = mu + phi * (particles[i] - mu) + NormalDistribution(0.0, sigma).sample(1, loopSeeds[i])[0];
+      double likelihood = NormalDistribution(0.0, std::exp(particles[i] / 2.0)).pdf(observation);
+
+      weights[i] = likelihood;
+      localWeightSum += likelihood;
+    }
+    
+    std::lock_guard<std::mutex> lock(particle_mutex_);
+    weightSum += localWeightSum;
 }

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.4...3.18)
 
-set(CMAKE_CXX_STANDARD 14 CACHE STRING "C++ version selection")
+set(CMAKE_CXX_STANDARD 20 CACHE STRING "C++ version selection")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(stochastic_volatility_model

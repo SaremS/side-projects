@@ -3,6 +3,8 @@
 
 #include <vector>
 #include <cmath>
+#include <mutex>
+#include <span>
 
 #include "statistics/normal_distribution.h"
 #include "statistics/particles.h"
@@ -17,6 +19,11 @@ class StochasticVolatilityModel {
     double mu_;
     double phi_;
     double sigma_;
+    std::mutex particle_mutex_;
+    void process_particle(std::span<double> particles, std::span<double> weights,
+                          double& weightSum, const double& observation,
+                          const std::span<int> loopSeeds,
+                          const double& mu, const double& phi, const double& sigma);
 
   public:
     StochasticVolatilityModel(double mu, double phi, double sigma);
