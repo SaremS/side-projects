@@ -2,32 +2,48 @@
 #include <stdexcept>
 #include <random>
 #include <functional>
+#include <Eigen/Dense>
 
 #include <statistics/particles.h>
 #include <statistics/normal_distribution.h>
 
 
-template <typename T>
-Particles<T>::Particles(std::vector<T> initial_particles) {
-  particleCount_ = initial_particles.size();
-  for (int i=0; i<particleCount_; i++) {
-    std::vector<T> temp = {initial_particles[i]};
-    particles_.push_back(temp);
+Particles::Particles(const std::vector<double>& initialParticles, const unsigned int& particleLength) {
+  particleCount_ = initialParticles.size();
+  particleLength_ = particleLength;
+  particles_ = Eigen::MatrixXd::Zero(particleLength, particleCount_);
+  particles_.row(0) = Eigen::Map<const Eigen::RowVectorXd>(initialParticles.data(), initialParticles.size());
+}
+
+Particles::Particles(const std::vector<std::vector<double>>& initialParticles, const unsigned int& particleLength) {
+  if (initialParticles.size() > particleLength) {
+    throw std::invalid_argument("Initial particles cannot be longer than particle length.");
   }
-  particleLength_ = 1;
+  particleCount_ = initialParticles[0].size();
+  particleLength_ = particleLength;
+
+  particles_ = Eigen::MatrixXd::Zero(particleLength, particleCount_);
+  for (int col = 0; col < particleCount_; ++col) {
+      int len = particleLength_;  
+      for (int row = 0; row < len && row < particleLength_; ++row) {
+          particles_(row, col) = initialParticles[col][row];
+      }
+  }
 }
 
-template <typename T>
-Particles<T>::Particles(std::vector<std::vector<T>> initial_particles) {
-  particles_ = initial_particles;
-  particleCount_ = initial_particles.size();
-  particleLength_ = initial_particles[0].size();
+Particles::Particles(const NormalDistribution& dist, const unsigned int& nParticles,
+          const unsigned int& particleLength,
+          const unsigned int& seed) {
+  particleCount_ = nParticles;
+  particleLength_ = particleLength;
+  particles_ = Eigen::MatrixXd::Zero(particleLength, particleCount_);
+  std::vector<double> samples = dist.sample(nParticles, seed);
+  particles_.row(0) = Eigen::Map<const Eigen::RowVectorXd>(samples.data(), samples.size());
 }
 
-template <typename T>
-bool Particles<T>::operator==(const Particles<T>& other) const {
-  std::vector<std::vector<T>> left = particles_; 
-  std::vector<std::vector<T>> right = other.particles_;
+bool Particles::operator==(const Particles& other) const {
+  Eigen::MatrixXd left = particles_; 
+  Eigen::MatrixXd right = other.particles_;
 
   unsigned int particleCount = particleCount_;
   unsigned int particleLength = particleLength_;
@@ -36,17 +52,9 @@ bool Particles<T>::operator==(const Particles<T>& other) const {
     return false;
   }
 
-  for (int i=0; i<particleCount; i++) {
-    for (int j=0; j<particleLength; j++) {
-      if (left[i][j] != right[i][j]) {
-        return false;
-      }
-    }
-  }
-
-  return true;
+  return left.isApprox(right);
 }
-
+/*
 template <typename T>
 void Particles<T>::applyTransformation(T (*func)(T)) {
   std::vector<std::vector<T>> new_particles;
@@ -143,20 +151,16 @@ template <typename T>
 std::vector<std::vector<T>> Particles<T>::getParticlesAsNestedVector() const {
   return particles_;
 }
-
-template <typename T>
-unsigned int Particles<T>::getParticleCount() const {
+*/
+unsigned int Particles::getParticleCount() const {
   return particleCount_;
 }
 
-template <typename T>
-unsigned int Particles<T>::getParticleLength() const {
+unsigned int Particles::getParticleLength() const {
   return particleLength_;
 }
 
-template <typename T>
-void Particles<T>::setSeed(unsigned int seed) const {
+void Particles::setSeed(const unsigned int& seed) const {
     generator_.seed(seed);
 }
 
-template class Particles<double>;
