@@ -5,6 +5,7 @@
 #include <vector>
 #include <cmath>
 #include <functional>
+
 #include <Eigen/Dense>
 
 #include "normal_distribution.h"

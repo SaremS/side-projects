@@ -1,8 +1,8 @@
 #include <vector>
 #include <cmath>
 #include <stdexcept>
-#include <thread>
-#include <mutex>
+
+#include <Eigen/Dense>
 
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
@@ -23,26 +23,26 @@ PYBIND11_MODULE(stochastic_volatility_model,m) {
 		.def("particleFilter", &StochasticVolatilityModel::particleFilter)
     .def("logLikelihood", &StochasticVolatilityModel::logLikelihood);
 
-	py::class_<Particles<double>>(m, "Particles")
-		.def("get_particles", &Particles<double>::getParticlesAsNestedVector);
+	py::class_<Particles>(m, "Particles")
+		.def("getParticles", &Particles::getParticlesAsEigenMatrix);
 }
 
 
 StochasticVolatilityModel::StochasticVolatilityModel(double mu, double phi, double sigma) : mu_(mu), phi_(phi), sigma_(sigma) {}
 
-Particles<double> StochasticVolatilityModel::particleFilter(const std::vector<double>& y, const unsigned int& nParticles, const unsigned int& seed) {
+Particles StochasticVolatilityModel::particleFilter(const Eigen::VectorXd& y, const unsigned int& nParticles, const unsigned int& seed) {
   unsigned int T = y.size();
 
   double mu = mu_;
   double phi = std::tanh(phi_);
   double sigma = std::exp(sigma_);
 
-  Particles<double> particles = Particles<double>(NormalDistribution(mu, sigma), nParticles, seed);
+  Particles particles = Particles(NormalDistribution(mu, sigma), nParticles, T+1, seed);
 
   int loopSeed = seed; //unique seed for each (nested) loop iteration
 
   for (int t=1; t<=T; t++) {
-    std::vector<double> latestParticles = particles.getLatestParticlesAsVector(); //particles at t-1
+    Eigen::VectorXd latestParticles = particles.getLatestParticles(); //particles at t-1
     std::vector<double> weights; //weights can be calculated inside loop as well
     double weightSum = 0.0; //to divide later on
     for (double& p : latestParticles) {

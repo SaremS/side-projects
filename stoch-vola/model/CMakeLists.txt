@@ -59,6 +59,33 @@ add_executable(
 
 target_link_libraries(unittest_particles gtest_main pybind11::embed Eigen3::Eigen)
 
+add_executable(
+  unittest_utilfuns
+  include/statistics/util_funs.h
+  lib/statistics/util_funs.cpp
+  tests/unittest_util_funs.cpp
+)
+
+target_link_libraries(unittest_utilfuns gtest_main)
+
+
+add_executable(
+  unittest_stochastic_volatility_model
+  include/model/stochastic_volatility_model.h
+  include/statistics/normal_distribution.h
+  include/statistics/particles.h
+  include/statistics/util_funs.h
+  lib/model/stochastic_volatility_model.cpp
+  lib/statistics/normal_distribution.cpp
+  lib/statistics/particles.cpp
+  lib/statistics/util_funs.cpp
+  tests/unittest_stochastic_volatility_model.cpp
+)
+
+target_link_libraries(unittest_stochastic_volatility_model gtest_main pybind11::embed)
+
 include(GoogleTest)
 gtest_discover_tests(unittest_normal_distribution)
 gtest_discover_tests(unittest_particles)
+gtest_discover_tests(unittest_utilfuns)
+gtest_discover_tests(unittest_stochastic_volatility_model)
