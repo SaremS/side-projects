@@ -8,21 +8,45 @@
 #include <statistics/normal_distribution.h>
 
 
+Particles::Particles(const Eigen::VectorXd& initialParticles, const unsigned int& particleLength) {
+  particleCount_ = initialParticles.size();
+  particleLength_ = particleLength;
+  currentRow_ = 0;
+  particles_ = Eigen::MatrixXd::Zero(particleLength, particleCount_);
+  particles_.row(0) = initialParticles;
+}
+
+Particles::Particles(const Eigen::MatrixXd& initialParticles, const unsigned int& particleLength) {
+  if (initialParticles.rows() > particleLength) {
+    throw std::invalid_argument("Initial particles cannot be longer than particle length.");
+  }
+
+  particleCount_ = initialParticles.cols();
+  particleLength_ = particleLength;
+  currentRow_ = 0;
+  particles_ = Eigen::MatrixXd::Zero(particleLength, particleCount_);
+  particles_.topRows(initialParticles.rows()) = initialParticles;
+}
+
+
 Particles::Particles(const std::vector<double>& initialParticles, const unsigned int& particleLength) {
   particleCount_ = initialParticles.size();
   particleLength_ = particleLength;
+  currentRow_ = 0;
   particles_ = Eigen::MatrixXd::Zero(particleLength, particleCount_);
   particles_.row(0) = Eigen::Map<const Eigen::RowVectorXd>(initialParticles.data(), initialParticles.size());
 }
+
 
 Particles::Particles(const std::vector<std::vector<double>>& initialParticles, const unsigned int& particleLength) {
   if (initialParticles.size() > particleLength) {
     throw std::invalid_argument("Initial particles cannot be longer than particle length.");
   }
-  particleCount_ = initialParticles[0].size();
+  particleCount_ = initialParticles.size();
   particleLength_ = particleLength;
+  currentRow_ = initialParticles[0].size() - 1;
 
-  particles_ = Eigen::MatrixXd::Zero(particleLength, particleCount_);
+  particles_ = Eigen::MatrixXd::Zero(particleLength_, particleCount_);
   for (int col = 0; col < particleCount_; ++col) {
       int len = particleLength_;  
       for (int row = 0; row < len && row < particleLength_; ++row) {
@@ -36,6 +60,7 @@ Particles::Particles(const NormalDistribution& dist, const unsigned int& nPartic
           const unsigned int& seed) {
   particleCount_ = nParticles;
   particleLength_ = particleLength;
+  currentRow_ = 0;
   particles_ = Eigen::MatrixXd::Zero(particleLength, particleCount_);
   std::vector<double> samples = dist.sample(nParticles, seed);
   particles_.row(0) = Eigen::Map<const Eigen::RowVectorXd>(samples.data(), samples.size());
@@ -54,104 +79,84 @@ bool Particles::operator==(const Particles& other) const {
 
   return left.isApprox(right);
 }
-/*
-template <typename T>
-void Particles<T>::applyTransformation(T (*func)(T)) {
-  std::vector<std::vector<T>> new_particles;
-  for (int i=0; i<particleCount_; i++) {
-    std::vector<T> temp;
-    for (int j=0; j<particleLength_; j++) {
-      temp.push_back(func(particles_[i][j]));
-    }
-    new_particles.push_back(temp);
-  }
-  particles_ = new_particles;
+
+
+void Particles::applyTransformation(const std::function<double(double)>& func) {
+  particles_ = particles_.unaryExpr(func);
 }
 
-template <typename T>
-std::vector<T> Particles<T>::reduceParticles(const std::function<T(std::vector<T>)>& func) const {
-  std::vector<T> result;
 
-  for (int i=0; i<particleLength_; i++) {
-    std::vector<T> temp;
-    for (int j=0; j<particleCount_; j++) {
-      temp.push_back(particles_[j][i]);
-    }
-    result.push_back(func(temp));
+Eigen::VectorXd Particles::reduceParticles(const std::function<double(const Eigen::VectorXd&)>& func) const {
+  Eigen::VectorXd result(particleLength_);
+  for (int row = 0; row < particleLength_; ++row) {
+      result[row] = func(particles_.row(row));
   }
+
   return result;
 }
 
-template <typename T>
-std::vector<T> Particles<T>::reduceTraces(const std::function<T(std::vector<T>)>& func) const {
-  std::vector<T> result;
-
-  for (int i=0; i<particleCount_; i++) {
-    std::vector<T> temp;
-    for (int j=0; j<particleLength_; j++) {
-      temp.push_back(particles_[i][j]);
-    }
-    result.push_back(func(temp));
+Eigen::VectorXd Particles::reduceTraces(const std::function<double(const Eigen::VectorXd&)>& func) const {
+  Eigen::VectorXd result(particleCount_);
+  for (int col = 0; col < particleCount_; ++col) {
+      result[col] = func(particles_.col(col));
   }
+
   return result;
 }
 
-template <typename T>
-void Particles<T>::appendParticles(std::vector<T> new_particles) {
-  if (new_particles.size() != particleCount_) {
+
+void Particles::appendParticles(const Eigen::VectorXd& newParticles) {
+  if (currentRow_ >= particleLength_ - 1) {
+    throw std::invalid_argument("Cannot append more particles.");
+  }
+  if (newParticles.size() != particleCount_) {
     throw std::invalid_argument("Number of new particles must be equal to the number of particles in the object.");
   }
-  for (int i=0; i<particleCount_; i++) {
-    particles_[i].push_back(new_particles[i]);
-  }
-  particleLength_ += 1;
+
+  particles_.row(currentRow_+1) = newParticles;
+  currentRow_++;
 }
 
-template <typename T>
-void Particles<T>::resampleParticles(const std::vector<double>& weights, const unsigned int& seed) {
+Eigen::VectorXd Particles::getLatestParticles() const {
+  Eigen::VectorXd result = particles_.row(currentRow_);
+  return result;
+}
+
+Eigen::MatrixXd Particles::getParticlesAsEigenMatrix() const {
+  return particles_;
+}
+
+void Particles::resampleParticles(const std::vector<double>& weights, const unsigned int& seed) {
   if (weights.size() != particleCount_) {
     throw std::invalid_argument("Number of weights must be equal to the number of particles in the object.");
   }
   setSeed(seed);
   std::discrete_distribution<int> distribution(weights.begin(), weights.end());
-  std::vector<std::vector<T>> new_particles;
-  for (int i=0; i<particleCount_; i++) {
+
+  Eigen::MatrixXd newParticles = Eigen::MatrixXd::Zero(particleLength_, particleCount_);
+
+  for (int col = 0; col < particleCount_; ++col) {
     int index = distribution(generator_);
-    new_particles.push_back(particles_[index]);
+    newParticles.col(col) = particles_.col(index);
   }
-  particles_ = new_particles;
+
+  particles_ = newParticles;
 }
 
-template <typename T>
-std::vector<T> Particles<T>::getLatestParticlesAsVector() const {
-  std::vector<T> result;
-  for (int i=0; i<particleCount_; i++) {
-    result.push_back(particles_[i][particleLength_-1]);
-  }
-  return result;
-}
 
-template <typename T>
-Particles<T> Particles<T>::getParticlesWithoutInit() const {
+Particles Particles::getParticlesWithoutInit() const {
   if (particleLength_ == 1) {
     throw std::invalid_argument("Cannot remove initial particles.");
   }
    
-  std::vector<std::vector<T>> new_particles = particles_;
+  //return from second row to end 
+  Eigen::MatrixXd newParticles = particles_.bottomRows(particleLength_-1);
+  Particles result(newParticles, particleLength_-1);
 
-  for (std::vector<T>& vec : new_particles) {
-    vec.erase(vec.begin());
-  }
-
-  Particles<T> result = Particles<T>(new_particles);
   return result;
 }
 
-template <typename T>
-std::vector<std::vector<T>> Particles<T>::getParticlesAsNestedVector() const {
-  return particles_;
-}
-*/
+
 unsigned int Particles::getParticleCount() const {
   return particleCount_;
 }
