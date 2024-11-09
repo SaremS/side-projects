@@ -7,7 +7,7 @@
 #include "statistics/particles.h"
 
 
-TEST(Particles, EigenVectorConstructor) {
+TEST(StochasticVolatility_Particles, EigenVectorConstructor) {
   std::vector<double> initial_particles = {1.0, 2.0, 3.0};
   Eigen::VectorXd initial_particles_eigen = Eigen::Map<const Eigen::VectorXd>(initial_particles.data(), initial_particles.size());
   Particles p(initial_particles_eigen);
@@ -15,7 +15,7 @@ TEST(Particles, EigenVectorConstructor) {
   EXPECT_EQ(p.getParticleLength(), 1);
 }
 
-TEST(Particles, EigenMatrixConstructor) {
+TEST(StochasticVolatility_Particles, EigenMatrixConstructor) {
   std::vector<double> initial_particles = {1.0, 2.0, 3.0};
   Eigen::MatrixXd initial_particles_eigen = Eigen::Map<const Eigen::MatrixXd>(initial_particles.data(), 1, initial_particles.size());
   Particles p(initial_particles_eigen);
@@ -23,7 +23,7 @@ TEST(Particles, EigenMatrixConstructor) {
   EXPECT_EQ(p.getParticleLength(), 1);
 }
 
-TEST(Particles, DefaultConstructor) {
+TEST(StochasticVolatility_Particles, DefaultConstructor) {
   std::vector<double> initial_particles = {1.0, 2.0, 3.0};
   Particles p(initial_particles);
   EXPECT_EQ(p.getParticleCount(), 3);
@@ -31,7 +31,7 @@ TEST(Particles, DefaultConstructor) {
 }
 
 
-TEST(Particles, RandomNormalConstructor) {
+TEST(StochasticVolatility_Particles, RandomNormalConstructor) {
   NormalDistribution nd(0.0, 1.0);
   Particles first(nd, 10, 10, 123);
 
@@ -41,9 +41,25 @@ TEST(Particles, RandomNormalConstructor) {
   EXPECT_TRUE(first == second);
 }
 
+TEST(StochasticVolatility_Particles, IndependentVectorNormalConstructor) {
+  Eigen::VectorXd means(3);
+  means << 1.0, 2.0, 3.0;
+  Eigen::VectorXd stdDevs(3);
+  stdDevs << 0.1, 0.2, 0.3;
+  IndependentVectorNormal ivn(means, stdDevs);
+  Particles p(ivn, 10, 123);
+  Eigen::VectorXd samples = ivn.sample(123);
+  Particles pt(samples, 10);
+  EXPECT_TRUE(p == pt);
+
+  Eigen::VectorXd samples2 = ivn.sample(124);
+  Particles ptt(samples2, 10);
+  EXPECT_FALSE(p == ptt);
+}
 
 
-TEST(Particles, transformParticles) {
+
+TEST(StochasticVolatility_Particles, transformParticles) {
   std::vector<double> initial_particles = {1.0, 2.0, 3.0};
   Particles p(initial_particles);
   p.applyTransformation([](double v) {return v*2.0;});
@@ -55,7 +71,7 @@ TEST(Particles, transformParticles) {
 }
 
 
-TEST(Particles, reduceParticles) {
+TEST(StochasticVolatility_Particles, reduceParticles) {
   std::vector<double> initial_particles = {1.0, 2.0, 3.0};
   Particles p(initial_particles, 1);
   Eigen::VectorXd means = p.reduceParticles([](Eigen::VectorXd vec){
@@ -67,7 +83,7 @@ TEST(Particles, reduceParticles) {
   EXPECT_EQ(means(0,0), 2.0);
 }
 
-TEST(Particles, reduceTraces) {
+TEST(StochasticVolatility_Particles, reduceTraces) {
   std::vector<double> initial_particles = {1.0, 2.0, 3.0};
   Particles p(initial_particles);
   Eigen::VectorXd means = p.reduceTraces([](Eigen::VectorXd vec){
@@ -82,7 +98,7 @@ TEST(Particles, reduceTraces) {
 }
 
 
-TEST(Particles, appendParticles) {
+TEST(StochasticVolatility_Particles, appendParticles) {
   std::vector<double> initialParticles = {1.0, 2.0, 3.0};
   Eigen::VectorXd initialParticlesEigen = Eigen::Map<const Eigen::VectorXd>(initialParticles.data(), initialParticles.size());
   Particles p(initialParticles, 2);
@@ -97,7 +113,7 @@ TEST(Particles, appendParticles) {
   EXPECT_TRUE(p == pt);
 }
 
-TEST(Particles, getLatestParticles) {
+TEST(StochasticVolatility_Particles, getLatestParticles) {
   std::vector<double> initial_particles = {1.0, 2.0, 3.0};
   Particles p(initial_particles);
   Eigen::VectorXd particles = p.getLatestParticles();
@@ -107,7 +123,7 @@ TEST(Particles, getLatestParticles) {
 }
 
 
-TEST(Particles, GetParticlesAsEigenMatrix) {
+TEST(StochasticVolatility_Particles, GetParticlesAsEigenMatrix) {
   std::vector<double> initial_particles = {1.0, 2.0, 3.0};
   Particles p(initial_particles);
   Eigen::MatrixXd particles = p.getParticlesAsEigenMatrix();
@@ -118,7 +134,7 @@ TEST(Particles, GetParticlesAsEigenMatrix) {
 }
 
 
-TEST(Particles, resampleParticles) {
+TEST(StochasticVolatility_Particles, resampleParticles) {
   std::vector<double> initial_particles = {1.0, 2.0, 3.0};
   Particles p(initial_particles);
 

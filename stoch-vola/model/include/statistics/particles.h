@@ -28,6 +28,10 @@ class Particles {
               const unsigned int& particleLength = 1,
               const unsigned int& seed = 123);
 
+    Particles(const IndependentVectorNormal& dist,
+            const unsigned int& particleLength = 1,
+            const unsigned int& seed = 123);
+
 
     void appendParticles(const Eigen::VectorXd& newParticles);
     void resampleParticles(const std::vector<double>& weights, const unsigned int& seed = 123);

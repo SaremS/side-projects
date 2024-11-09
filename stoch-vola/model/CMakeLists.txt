@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.4...3.18)
 
 set(CMAKE_CXX_STANDARD 14 CACHE STRING "C++ version selection")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(EIGENRAND_BUILD_TEST OFF CACHE BOOL "Disable EigenRand tests" FORCE)
+set(EIGENRAND_BUILD_BENCHMARK OFF CACHE BOOL "Disable EigenRand benchmarks" FORCE)
+
 
 project(stochastic_volatility_model
 	VERSION 0.1
@@ -9,16 +12,19 @@ project(stochastic_volatility_model
 	LANGUAGES CXX
 )
 
-include_directories(include)
 include(FetchContent)
+include_directories(include)
+include_directories(external/EigenRand)
+link_directories(external/EigenRand)
 
 FetchContent_Declare(
   Eigen	
   GIT_REPOSITORY https://gitlab.com/libeigen/eigen
-  GIT_TAG        3.4
+  GIT_TAG        3.4.0
 )
 
 FetchContent_MakeAvailable(Eigen)
+
 
 FetchContent_Declare(
   pybind11
@@ -27,6 +33,23 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(pybind11)
+
+pybind11_add_module(
+  stochastic_volatility_model
+  include/model/stochastic_volatility_model.h
+  include/statistics/normal_distribution.h
+  include/statistics/particles.h
+  include/statistics/util_funs.h
+  lib/model/stochastic_volatility_model.cpp
+  lib/statistics/normal_distribution.cpp
+  lib/statistics/particles.cpp
+  lib/statistics/util_funs.cpp
+)
+
+target_link_libraries(stochastic_volatility_model PRIVATE Eigen3::Eigen)
+
+target_compile_definitions(stochastic_volatility_model 
+                           PRIVATE VERSION_INFO=${EXAMPLE_VERSION_INFO})
 
 enable_testing()
 
@@ -46,7 +69,7 @@ add_executable(
   tests/unittest_normal_distribution.cpp
 )
 
-target_link_libraries(unittest_normal_distribution gtest_main)
+target_link_libraries(unittest_normal_distribution gtest_main Eigen3::Eigen)
 
 add_executable(
   unittest_particles
@@ -68,7 +91,6 @@ add_executable(
 
 target_link_libraries(unittest_utilfuns gtest_main)
 
-
 add_executable(
   unittest_stochastic_volatility_model
   include/model/stochastic_volatility_model.h
@@ -82,7 +104,7 @@ add_executable(
   tests/unittest_stochastic_volatility_model.cpp
 )
 
-target_link_libraries(unittest_stochastic_volatility_model gtest_main pybind11::embed)
+target_link_libraries(unittest_stochastic_volatility_model gtest_main pybind11::embed Eigen3::Eigen)
 
 include(GoogleTest)
 gtest_discover_tests(unittest_normal_distribution)

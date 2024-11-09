@@ -23,7 +23,7 @@ class StochasticVolatilityModel {
   public:
     StochasticVolatilityModel(double mu, double phi, double sigma);
     Particles particleFilter(const Eigen::VectorXd& y, const unsigned int& M, const unsigned int& seed = 123);
-    double logLikelihood(const std::vector<double>& y, const unsigned int& M, const unsigned int& seed = 123);
+    double logLikelihood(const Eigen::VectorXd& y, const unsigned int& M, const unsigned int& seed = 123);
 };
 
 #endif

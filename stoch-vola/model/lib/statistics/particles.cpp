@@ -66,6 +66,18 @@ Particles::Particles(const NormalDistribution& dist, const unsigned int& nPartic
   particles_.row(0) = Eigen::Map<const Eigen::RowVectorXd>(samples.data(), samples.size());
 }
 
+
+Particles::Particles(const IndependentVectorNormal& dist,
+          const unsigned int& particleLength,
+          const unsigned int& seed) {
+  particleCount_ = dist.getMeans().size();
+  particleLength_ = particleLength;
+  currentRow_ = 0;
+  particles_ = Eigen::MatrixXd::Zero(particleLength, particleCount_);
+  Eigen::VectorXd samples = dist.sample(seed);
+  particles_.row(0) = Eigen::Map<const Eigen::RowVectorXd>(samples.data(), samples.size());
+}
+
 bool Particles::operator==(const Particles& other) const {
   Eigen::MatrixXd left = particles_; 
   Eigen::MatrixXd right = other.particles_;

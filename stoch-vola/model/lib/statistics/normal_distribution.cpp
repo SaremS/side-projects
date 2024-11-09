@@ -3,6 +3,9 @@
 #include <cmath>
 #include <stdexcept>
 
+#include <Eigen/Dense>
+#include <EigenRand/EigenRand>
+
 #include "statistics/normal_distribution.h"
 
 
@@ -48,5 +51,109 @@ std::vector<double> NormalDistribution::sample(size_t n, unsigned int seed) cons
 
 void NormalDistribution::setSeed(unsigned int seed) const {
     generator_.seed(seed);
+}
+
+
+
+IndependentVectorNormal::IndependentVectorNormal(Eigen::VectorXd means, Eigen::VectorXd stdDevs) : means_(means), stdDevs_(stdDevs) {
+  if (means_.size() != stdDevs_.size()) {
+    throw std::invalid_argument("Means and standard deviations must have the same length.");
+  }
+  if (stdDevs_.minCoeff() <= 0) {
+    throw std::invalid_argument("Standard deviations must be greater than zero.");
+  }
+}
+
+IndependentVectorNormal::IndependentVectorNormal(double mean, double stdDev, unsigned int n) : means_(Eigen::VectorXd::Constant(n, mean)), stdDevs_(Eigen::VectorXd::Constant(n, stdDev)) {
+  if (stdDevs_.minCoeff() <= 0) {
+    throw std::invalid_argument("Standard deviation must be greater than zero.");
+  }
+}
+
+void IndependentVectorNormal::setMeans(Eigen::VectorXd means) {
+  means_ = means;
+}
+
+void IndependentVectorNormal::setStdDevs(Eigen::VectorXd stdDevs) {
+  if (stdDevs.minCoeff() <= 0) {
+    throw std::invalid_argument("Standard deviations must be greater than zero.");
+  }
+
+  stdDevs_ = stdDevs;
+}
+
+Eigen::VectorXd IndependentVectorNormal::getMeans() const {
+  return means_;
+}
+
+Eigen::VectorXd IndependentVectorNormal::getStdDevs() const {
+  return stdDevs_;
+}
+
+Eigen::VectorXd IndependentVectorNormal::pdfs(const Eigen::VectorXd& x) const {
+  if (x.size() != means_.size()) {
+    throw std::invalid_argument("Input vector must have the same length as means.");
+  }
+
+  Eigen::VectorXd leftQuotient = stdDevs_ * std::sqrt(2.0*M_PI);
+  Eigen::VectorXd leftFactor = 1.0 / leftQuotient.array();
+
+  Eigen::VectorXd xMuDiff = x.array() - means_.array();
+  Eigen::VectorXd rightFactor = (-0.5 * ((xMuDiff.array() / stdDevs_.array()).array().pow(2))).array().exp();
+
+  return leftFactor.array() * rightFactor.array();
+}
+
+Eigen::VectorXd IndependentVectorNormal::pdfs(const double& x) const {
+  Eigen::VectorXd leftQuotient = stdDevs_ * std::sqrt(2.0*M_PI);
+  Eigen::VectorXd leftFactor = 1.0 / leftQuotient.array();
+
+  Eigen::VectorXd xMuDiff = x - means_.array();
+  Eigen::VectorXd rightFactor = (-0.5 * ((xMuDiff.array() / stdDevs_.array()).array().pow(2))).array().exp();
+
+  return leftFactor.array() * rightFactor.array();
+}
+
+Eigen::VectorXd IndependentVectorNormal::logLikelihoods(const Eigen::VectorXd& x) const {
+  if (x.size() != means_.size()) {
+    throw std::invalid_argument("Input vector must have the same length as means.");
+  }
+  Eigen::VectorXd leftFactor = -0.5 * std::log(2 * M_PI) - stdDevs_.array().log();
+  Eigen::VectorXd xMuDiff = x.array() - means_.array();
+  Eigen::VectorXd rightFactor = -0.5 * ((xMuDiff.array() / stdDevs_.array()).array().pow(2));
+
+  return leftFactor.array() + rightFactor.array();
+}
+
+Eigen::VectorXd IndependentVectorNormal::logLikelihoods(const double& x) const {
+  Eigen::VectorXd leftFactor = -0.5 * std::log(2 * M_PI) - stdDevs_.array().log();
+  Eigen::VectorXd xMuDiff = x - means_.array();
+  Eigen::VectorXd rightFactor = -0.5 * ((xMuDiff.array() / stdDevs_.array()).array().pow(2));
+
+  return leftFactor.array() + rightFactor.array();
+}
+
+Eigen::MatrixXd IndependentVectorNormal::colWiseLogLikelihoods(const Eigen::MatrixXd& x) const {
+  Eigen::VectorXd leftFactor = -0.5 * std::log(2 * M_PI) - stdDevs_.array().log();
+  Eigen::MatrixXd xMuDiff = x.colwise() - means_;
+  Eigen::MatrixXd xZStandard = xMuDiff.array().colwise() / stdDevs_.array();
+
+  Eigen::MatrixXd rightFactor = -0.5 * xZStandard.array().pow(2);
+   
+  return rightFactor.colwise() + leftFactor;
+}
+
+
+Eigen::VectorXd IndependentVectorNormal::sample(unsigned int seed) const {
+  Eigen::Rand::P8_mt19937_64 rng{seed};
+
+  int sampleSize = means_.size();
+  Eigen::MatrixXd samplesMatrix = Eigen::Rand::normal<Eigen::MatrixXd>(sampleSize, 1, rng);
+  Eigen::VectorXd samples = samplesMatrix.col(0);
+
+  samples.array() *= stdDevs_.array();
+  samples.array() += means_.array();
+
+  return samples;
 }
 

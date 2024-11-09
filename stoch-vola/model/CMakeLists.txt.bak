@@ -40,6 +40,8 @@ pybind11_add_module(
   lib/statistics/util_funs.cpp
 )
 
+target_link_libraries(stochastic_volatility_model PRIVATE Eigen3::Eigen EigenRand::EigenRand)
+
 target_compile_definitions(stochastic_volatility_model 
                            PRIVATE VERSION_INFO=${EXAMPLE_VERSION_INFO})
 
