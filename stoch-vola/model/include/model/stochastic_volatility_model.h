@@ -4,6 +4,8 @@
 #include <vector>
 #include <cmath>
 
+#include <Eigen/Dense>
+
 #include "statistics/normal_distribution.h"
 #include "statistics/particles.h"
 
@@ -20,8 +22,8 @@ class StochasticVolatilityModel {
 
   public:
     StochasticVolatilityModel(double mu, double phi, double sigma);
-    Particles<double> particleFilter(const std::vector<double>& y, const unsigned int& M, const unsigned int& seed = 123);
-    double logLikelihood(const std::vector<double>& y, const unsigned int& M, const unsigned int& seed = 123);
+    Particles particleFilter(const Eigen::VectorXd& y, const unsigned int& M, const unsigned int& seed = 123);
+    double logLikelihood(const Eigen::VectorXd& y, const unsigned int& M, const unsigned int& seed = 123);
 };
 
 #endif

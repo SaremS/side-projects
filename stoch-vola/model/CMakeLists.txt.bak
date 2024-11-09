@@ -2,9 +2,6 @@ cmake_minimum_required(VERSION 3.4...3.18)
 
 set(CMAKE_CXX_STANDARD 14 CACHE STRING "C++ version selection")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(EIGENRAND_BUILD_TEST OFF CACHE BOOL "Disable EigenRand tests" FORCE)
-set(EIGENRAND_BUILD_BENCHMARK OFF CACHE BOOL "Disable EigenRand benchmarks" FORCE)
-
 
 project(stochastic_volatility_model
 	VERSION 0.1
@@ -12,19 +9,16 @@ project(stochastic_volatility_model
 	LANGUAGES CXX
 )
 
-include(FetchContent)
 include_directories(include)
-include_directories(external/EigenRand)
-link_directories(external/EigenRand)
+include(FetchContent)
 
 FetchContent_Declare(
   Eigen	
   GIT_REPOSITORY https://gitlab.com/libeigen/eigen
-  GIT_TAG        3.4.0
+  GIT_TAG        3.4
 )
 
 FetchContent_MakeAvailable(Eigen)
-
 
 FetchContent_Declare(
   pybind11
@@ -46,7 +40,7 @@ pybind11_add_module(
   lib/statistics/util_funs.cpp
 )
 
-target_link_libraries(stochastic_volatility_model PRIVATE Eigen3::Eigen)
+target_link_libraries(stochastic_volatility_model PRIVATE Eigen3::Eigen EigenRand::EigenRand)
 
 target_compile_definitions(stochastic_volatility_model 
                            PRIVATE VERSION_INFO=${EXAMPLE_VERSION_INFO})
@@ -69,7 +63,7 @@ add_executable(
   tests/unittest_normal_distribution.cpp
 )
 
-target_link_libraries(unittest_normal_distribution gtest_main Eigen3::Eigen)
+target_link_libraries(unittest_normal_distribution gtest_main)
 
 add_executable(
   unittest_particles
@@ -80,7 +74,7 @@ add_executable(
   tests/unittest_particles.cpp
 )
 
-target_link_libraries(unittest_particles gtest_main pybind11::embed Eigen3::Eigen)
+target_link_libraries(unittest_particles gtest_main pybind11::embed)
 
 add_executable(
   unittest_utilfuns
@@ -104,7 +98,7 @@ add_executable(
   tests/unittest_stochastic_volatility_model.cpp
 )
 
-target_link_libraries(unittest_stochastic_volatility_model gtest_main pybind11::embed Eigen3::Eigen)
+target_link_libraries(unittest_stochastic_volatility_model gtest_main pybind11::embed)
 
 include(GoogleTest)
 gtest_discover_tests(unittest_normal_distribution)

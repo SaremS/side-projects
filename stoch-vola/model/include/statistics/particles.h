@@ -4,45 +4,45 @@
 #include <random>
 #include <vector>
 #include <cmath>
-#include <type_traits>
 #include <functional>
+
+#include <Eigen/Dense>
 
 #include "normal_distribution.h"
 
-template <typename T>
 class Particles {
   private:
-    std::vector<std::vector<T>> particles_; //vector of particles of given length
+    Eigen::MatrixXd particles_;
     unsigned int particleCount_;
     unsigned int particleLength_;
+    unsigned int currentRow_;
     mutable std::mt19937 generator_;
-    void setSeed(unsigned int seed) const;
+    void setSeed(const unsigned int& seed) const;
 
   public:
-    Particles(std::vector<T> initial_particles);
-    Particles(std::vector<std::vector<T>> initial_particles);
+    Particles(const std::vector<double>& initialParticles, const unsigned int& particleLength = 1);
+    Particles(const Eigen::VectorXd& initialParticles, const unsigned int& particleLength = 1);
+    Particles(const Eigen::MatrixXd& initialParticles, const unsigned int& particleLength = 1);
+    Particles(const std::vector<std::vector<double>>& initialParticles, const unsigned int& particleLength = 1);
+    Particles(const NormalDistribution& dist, const unsigned int& nParticles,
+              const unsigned int& particleLength = 1,
+              const unsigned int& seed = 123);
 
-    template <typename = std::enable_if_t<std::is_same<T, double>::value>>
-    Particles(const NormalDistribution& dist, const unsigned int& nParticles, const unsigned int& seed = 123) {
-      std::vector<T> samples = dist.sample(nParticles, seed);
-      particleCount_ = nParticles;
-      for (int i=0; i<particleCount_; i++) {
-        std::vector<T> temp = {samples[i]};
-        particles_.push_back(temp);
-      }
-      particleLength_ = 1;
-    }
+    Particles(const IndependentVectorNormal& dist,
+            const unsigned int& particleLength = 1,
+            const unsigned int& seed = 123);
 
-    void appendParticles(std::vector<T> new_particles);
+
+    void appendParticles(const Eigen::VectorXd& newParticles);
     void resampleParticles(const std::vector<double>& weights, const unsigned int& seed = 123);
-    void applyTransformation(T (*func)(T));
-    std::vector<T> reduceParticles(const std::function<T(std::vector<T>)>& func) const; //reduce over particles
-    std::vector<T> reduceTraces(const std::function<T(std::vector<T>)>& func) const; //reduce over all elements of a particle
-    bool operator==(const Particles<T>& other) const;
-    std::vector<T> getLatestParticlesAsVector() const;
-    Particles<T> getParticlesWithoutInit() const;
-
-    std::vector<std::vector<T>> getParticlesAsNestedVector() const;
+    void applyTransformation(const std::function<double(double)>& func);
+    Eigen::VectorXd getLatestParticles() const;
+    Eigen::VectorXd reduceParticles(const std::function<double(const Eigen::VectorXd&)>& func) const; //reduce over particles
+    Eigen::VectorXd reduceTraces(const std::function<double(const Eigen::VectorXd&)>& func) const; //reduce over all elements of a particle
+    Eigen::MatrixXd getParticlesAsEigenMatrix() const;
+    Particles getParticlesWithoutInit() const;
+ 
+    bool operator==(const Particles& other) const;
 
     unsigned int getParticleCount() const;
     unsigned int getParticleLength() const;

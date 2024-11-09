@@ -3,7 +3,7 @@
 #include "gtest/gtest.h"
 #include "statistics/util_funs.h"
 
-TEST(utilfunsTest, Mean) {
+TEST(StochasticVolatility_utilfunsTest, Mean) {
     std::vector<double> data = {1.0, 2.0, 3.0, 4.0, 5.0};
     EXPECT_DOUBLE_EQ(utilfuns::mean(data), 3.0);
 
@@ -14,7 +14,7 @@ TEST(utilfunsTest, Mean) {
     EXPECT_DOUBLE_EQ(utilfuns::mean(data), 10.0);
 }
 
-TEST(utilfunsTest, StandardDeviation) {
+TEST(StochasticVolatility_utilfunsTest, StandardDeviation) {
     std::vector<double> data = {1.0, 2.0, 3.0, 4.0, 5.0};
     EXPECT_NEAR(utilfuns::standardDeviation(data), 1.414213, 1e-5);
 
@@ -25,7 +25,7 @@ TEST(utilfunsTest, StandardDeviation) {
     EXPECT_NEAR(utilfuns::standardDeviation(data), 0.0, 1e-5);
 }
 
-TEST(utilfunsTest, Quantile) {
+TEST(StochasticVolatility_utilfunsTest, Quantile) {
     std::vector<double> data = {1.0, 2.0, 3.0, 4.0, 5.0};
     EXPECT_DOUBLE_EQ(utilfuns::quantile(data, 0.0), 1.0);
     EXPECT_DOUBLE_EQ(utilfuns::quantile(data, 0.25), 2.0);

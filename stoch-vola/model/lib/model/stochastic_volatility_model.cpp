@@ -1,10 +1,11 @@
 #include <vector>
 #include <cmath>
 #include <stdexcept>
-#include <thread>
-#include <mutex>
+
+#include <Eigen/Dense>
 
 #include "pybind11/pybind11.h"
+#include "pybind11/eigen.h"
 #include "pybind11/stl.h"
 
 #include "model/stochastic_volatility_model.h"
@@ -23,71 +24,84 @@ PYBIND11_MODULE(stochastic_volatility_model,m) {
 		.def("particleFilter", &StochasticVolatilityModel::particleFilter)
     .def("logLikelihood", &StochasticVolatilityModel::logLikelihood);
 
-	py::class_<Particles<double>>(m, "Particles")
-		.def("get_particles", &Particles<double>::getParticlesAsNestedVector);
+	py::class_<Particles>(m, "Particles")
+		.def("getParticles", &Particles::getParticlesAsEigenMatrix);
 }
 
 
 StochasticVolatilityModel::StochasticVolatilityModel(double mu, double phi, double sigma) : mu_(mu), phi_(phi), sigma_(sigma) {}
 
-Particles<double> StochasticVolatilityModel::particleFilter(const std::vector<double>& y, const unsigned int& nParticles, const unsigned int& seed) {
+Particles StochasticVolatilityModel::particleFilter(const Eigen::VectorXd& y, const unsigned int& nParticles, const unsigned int& seed) {
   unsigned int T = y.size();
 
   double mu = mu_;
   double phi = std::tanh(phi_);
   double sigma = std::exp(sigma_);
 
-  Particles<double> particles = Particles<double>(NormalDistribution(mu, sigma), nParticles, seed);
+  Particles particles = Particles(IndependentVectorNormal(mu, sigma, nParticles), T+1, seed);
 
-  int loopSeed = seed; //unique seed for each (nested) loop iteration
+  int loopSeed = seed; //unique seed for each loop iteration
 
   for (int t=1; t<=T; t++) {
-    std::vector<double> latestParticles = particles.getLatestParticlesAsVector(); //particles at t-1
-    std::vector<double> weights; //weights can be calculated inside loop as well
-    double weightSum = 0.0; //to divide later on
-    for (double& p : latestParticles) {
-      p = mu + phi * (p - mu) + NormalDistribution(0.0, sigma).sample(1, loopSeed)[0];
+    Eigen::VectorXd latestParticles = particles.getLatestParticles(); //particles at t-1
 
-      double likelihood = NormalDistribution(0.0, std::exp(p/2.0)).pdf(y[t-1]);
-      weights.push_back(likelihood);
-      weightSum += likelihood;
+    latestParticles = mu + phi * (latestParticles.array() - mu) + IndependentVectorNormal(0.0, sigma, nParticles).sample(loopSeed).array();
 
-      loopSeed++;
-    }
+    Eigen::VectorXd means = Eigen::VectorXd::Zero(nParticles);
+    Eigen::VectorXd stds = (latestParticles / 2.0).array().exp();
+
+    Eigen::VectorXd likelihoods = IndependentVectorNormal(means, stds).pdfs(y[t-1]);
+    double lSum = likelihoods.sum();
+
     particles.appendParticles(latestParticles); //particles at t
-
-    if (weightSum > 0.0) { //do nothing in the degenerate case
-      for (double& w : weights) {
-        w /= weightSum;
-      }
+    
+    if (lSum > 0.0) {//avoid degenerate case
+      Eigen::VectorXd weights = likelihoods/lSum;
+      std::vector<double> weightsVec(weights.data(), weights.data() + nParticles);
       
-      particles.resampleParticles(weights, loopSeed);
+      particles.resampleParticles(weightsVec, loopSeed);
     }
   }
 
   return particles.getParticlesWithoutInit();
 }
 
-double StochasticVolatilityModel::logLikelihood(const std::vector<double>& y, const unsigned int& nParticles, const unsigned int& seed) {
-  Particles<double> particles = particleFilter(y, nParticles, seed);
 
-  std::function<double(std::vector<double>)> func = [y](std::vector<double> trace) {
-    unsigned int T = trace.size();
+double StochasticVolatilityModel::logLikelihood(const Eigen::VectorXd& y, const unsigned int& nParticles, const unsigned int& seed) {
+  unsigned int T = y.size();
+
+  double mu = mu_;
+  double phi = std::tanh(phi_);
+  double sigma = std::exp(sigma_);
+
+  Particles particles = Particles(IndependentVectorNormal(mu, sigma, nParticles), T+1, seed);
+
+  int loopSeed = seed; //unique seed for each loop iteration
+  double logLikeSum = 0.0;
+
+  for (int t=1; t<=T; t++) {
+    Eigen::VectorXd latestParticles = particles.getLatestParticles(); //particles at t-1
+
+    latestParticles = mu + phi * (latestParticles.array() - mu) + IndependentVectorNormal(0.0, sigma, nParticles).sample(loopSeed).array();
+
+    Eigen::VectorXd means = Eigen::VectorXd::Zero(nParticles);
+    Eigen::VectorXd stds = (latestParticles / 2.0).array().exp();
+
+    Eigen::VectorXd logLikelihoods = IndependentVectorNormal(means, stds).logLikelihoods(y[t-1]);
+    Eigen::VectorXd likelihoods = logLikelihoods.array().exp();
+
+    double lSum = likelihoods.sum();
+    logLikeSum += logLikelihoods.sum();
+
+    particles.appendParticles(latestParticles); //particles at t
+
+    Eigen::VectorXd weights = likelihoods/lSum;
+    std::vector<double> weightsVec(weights.data(), weights.data() + nParticles);
     
-    double likelihood = 0.0;
-    for (int t=0; t<T; t++) {
-      double p = trace[t];
-      likelihood += NormalDistribution(0.0, std::exp(p/2.0)).logLikelihood(y[t]);
-    }
-    return likelihood/T;
-  };
-
-  std::vector<double> loglikelihoodPerParticle = particles.reduceTraces(func);
-
-  double loglikelihood = 0.0;
-  for (double& ll : loglikelihoodPerParticle) {
-    loglikelihood += ll/nParticles;
+    particles.resampleParticles(weightsVec, loopSeed);
   }
 
-  return loglikelihood;
+  logLikeSum /= T*nParticles;
+
+  return logLikeSum;
 }
