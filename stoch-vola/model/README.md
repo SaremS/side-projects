@@ -5,4 +5,4 @@ Implements a Stochastic Volatility model with particle filtering and log-likelih
 $$x_t\sim\mathcal{N}(\mu+\phi x_{t-1},\sigma^2)$$
 $$y_t\sim\mathcal{N}(0,\exp(x_t))$$
 
-Example notebook, using Python, [here](https://github.com/SaremS/sample_notebooks/blob/master/StochasticVolatility.ipynb).
+Example notebook, using Python, [here](https://sarem-seitz.com/notebooks/StochasticVolatility.html).
