@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
-	
+
 	"github.com/sarems/side-projects/terraform-provider-hashicups/internal/provider"
 )
 
@@ -22,7 +22,7 @@ func main() {
 
 	opts := providerserver.ServeOpts{
 		Address: "hashicorp.com/edu/hashicups",
-		Debug: debug,
+		Debug:   debug,
 	}
 
 	err := providerserver.Serve(context.Background(), provider.New(version), opts)
