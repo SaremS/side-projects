@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/hashicorp-demoapp/hashicups-client-go"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -15,8 +16,9 @@ import (
 )
 
 var (
-	_ resource.Resource              = &orderResource{}
-	_ resource.ResourceWithConfigure = &orderResource{}
+	_ resource.Resource                = &orderResource{}
+	_ resource.ResourceWithConfigure   = &orderResource{}
+	_ resource.ResourceWithImportState = &orderResource{}
 )
 
 func NewOrderResource() resource.Resource {
@@ -285,4 +287,8 @@ func (r *orderResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 		)
 		return
 	}
+}
+
+func (r *orderResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }

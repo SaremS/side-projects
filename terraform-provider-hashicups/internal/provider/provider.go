@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp-demoapp/hashicups-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/function"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
@@ -15,7 +16,8 @@ import (
 )
 
 var (
-	_ provider.Provider = &hashicupsProvider{}
+	_ provider.Provider              = &hashicupsProvider{}
+	_ provider.ProviderWithFunctions = &hashicupsProvider{}
 )
 
 func New(version string) func() provider.Provider {
@@ -182,5 +184,11 @@ func (p *hashicupsProvider) DataSources(_ context.Context) []func() datasource.D
 func (p *hashicupsProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewOrderResource,
+	}
+}
+
+func (p *hashicupsProvider) Functions(_ context.Context) []func() function.Function {
+	return []func() function.Function{
+		NewComputeTaxFunction,
 	}
 }
