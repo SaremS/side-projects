@@ -2,11 +2,15 @@ package provider
 
 import (
 	"context"
+	"os"
 
+	"github.com/hashicorp-demoapp/hashicups-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 var (
@@ -64,27 +68,27 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 	if config.Host.IsUnknown() {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("host"),
-            "Unknown HashiCups API Host",
-            "The provider cannot create the HashiCups API client as there is an unknown configuration value for the HashiCups API host. "+
-                "Either target apply the source of the value first, set the value statically in the configuration, or use the HASHICUPS_HOST environment variable.",
+			"Unknown HashiCups API Host",
+			"The provider cannot create the HashiCups API client as there is an unknown configuration value for the HashiCups API host. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the HASHICUPS_HOST environment variable.",
 		)
 	}
 
 	if config.Username.IsUnknown() {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("username"),
-		   "Unknown HashiCups API Username",
-					"The provider cannot create the HashiCups API client as there is an unknown configuration value for the HashiCups API username. "+
-						"Either target apply the source of the value first, set the value statically in the configuration, or use the HASHICUPS_USERNAME environment variable.",
+			"Unknown HashiCups API Username",
+			"The provider cannot create the HashiCups API client as there is an unknown configuration value for the HashiCups API username. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the HASHICUPS_USERNAME environment variable.",
 		)
 	}
 
 	if config.Password.IsUnknown() {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("password"),
-          "Unknown HashiCups API Password",
-            "The provider cannot create the HashiCups API client as there is an unknown configuration value for the HashiCups API password. "+
-                "Either target apply the source of the value first, set the value statically in the configuration, or use the HASHICUPS_PASSWORD environment variable.",
+			"Unknown HashiCups API Password",
+			"The provider cannot create the HashiCups API client as there is an unknown configuration value for the HashiCups API password. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the HASHICUPS_PASSWORD environment variable.",
 		)
 	}
 
@@ -105,13 +109,62 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 	}
 
 	if !config.Password.IsNull() {
-		passsword = config.Password.ValueString()
+		password = config.Password.ValueString()
 	}
+
+	if host == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("host"),
+			"Missing HashiCups API Host",
+			"The provider cannot create the HashiCups API client as there is a missing or empty value for the HashiCups API host. "+
+				"Set the host value in the configuration or use the HASHICUPS_HOST environment variable. "+
+				"If either is already set, ensure the value is not empty.",
+		)
+	}
+
+	if username == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("username"),
+			"Missing HashiCups API Username",
+			"The provider cannot create the HashiCups API client as there is a missing or empty value for the HashiCups API username. "+
+				"Set the username value in the configuration or use the HASHICUPS_USERNAME environment variable. "+
+				"If either is already set, ensure the value is not empty.",
+		)
+	}
+
+	if password == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("password"),
+			"Missing HashiCups API Password",
+			"The provider cannot create the HashiCups API client as there is a missing or empty value for the HashiCups API password. "+
+				"Set the password value in the configuration or use the HASHICUPS_PASSWORD environment variable. "+
+				"If either is already set, ensure the value is not empty.",
+		)
+	}
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	client, err := hashicups.NewClient(&host, &username, &password)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Unable to Create HashiCups API Client",
+			"An unexpected error occurred when creating the HashiCups API client. "+
+				"If the error is not clear, please contact the provider developers.\n\n"+
+				"HashiCups Client Error: "+err.Error(),
+		)
+		return
+	}
+
+	resp.DataSourceData = client
+	resp.ResourceData = client
 }
 
-
 func (p *hashicupsProvider) DataSources(_ context.Context) []func() datasource.DataSource {
-	return nil
+	return []func() datasource.DataSource{
+		NewCoffeesDataSource,
+	}
 }
 
 func (p *hashicupsProvider) Resources(_ context.Context) []func() resource.Resource {

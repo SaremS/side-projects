@@ -4,7 +4,10 @@ go 1.23.0
 
 toolchain go1.23.11
 
-require github.com/hashicorp/terraform-plugin-framework v1.15.0
+require (
+	github.com/hashicorp-demoapp/hashicups-client-go v0.1.0
+	github.com/hashicorp/terraform-plugin-framework v1.15.0
+)
 
 require (
 	github.com/fatih/color v1.13.0 // indirect
