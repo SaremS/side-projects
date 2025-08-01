@@ -1,3 +1,5 @@
+// Copyright (c) HashiCorp, Inc.
+
 package provider
 
 import (
@@ -45,14 +47,18 @@ func (p *hashicupsProvider) Metadata(_ context.Context, _ provider.MetadataReque
 
 func (p *hashicupsProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "Interact with HashiCups.",
 		Attributes: map[string]schema.Attribute{
 			"host": schema.StringAttribute{
+				Description: "URI for HashiCups API. May also be provided via HASHICUPS_HOST environment variable.",
 				Optional: true,
 			},
 			"username": schema.StringAttribute{
+				Description: "Username for HashiCups API. May also be provided via HASHICUPS_USERNAME environment variable.",
 				Optional: true,
 			},
 			"password": schema.StringAttribute{
+				Description: "Password for HashiCups API. May also be provided via HASHICUPS_PASSWORD environment variable.",
 				Optional:  true,
 				Sensitive: true,
 			},
