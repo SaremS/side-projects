@@ -2,10 +2,11 @@ use std::cell::UnsafeCell;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::mem::MaybeUninit;
 use std::thread;
 
-struct SPSCQueue<T: Clone> {
-    data: UnsafeCell<Vec<Option<T>>>,
+struct SPSCQueue<T> {
+    buffer: UnsafeCell<Vec<MaybeUninit<T>>>,
 
     capacity: usize,
 
@@ -13,12 +14,15 @@ struct SPSCQueue<T: Clone> {
     read_idx: AtomicUsize,
 }
 
-unsafe impl<T: Clone> Sync for SPSCQueue<T> {}
+unsafe impl<T> Sync for SPSCQueue<T> {}
 
-impl<T: Clone> SPSCQueue<T> {
+impl<T> SPSCQueue<T> {
     pub fn new(capacity: usize) -> Self {
+        let buffer: Vec<MaybeUninit<T>> = (0..capacity)
+            .map(|_| MaybeUninit::uninit())
+            .collect();
         SPSCQueue {
-            data: UnsafeCell::new(vec![None; capacity]),
+            buffer: UnsafeCell::new(buffer),
             capacity,
             write_idx: AtomicUsize::new(0),
             read_idx: AtomicUsize::new(0),
@@ -35,8 +39,10 @@ impl<T: Clone> SPSCQueue<T> {
 
         if next_write_idx != self.read_idx.load(Ordering::Acquire) {
             unsafe {
-                let data_ref = &mut *self.data.get();
-                data_ref[write_idx] = Some(item);
+                let data_ptr = (*self.buffer.get()).as_mut_ptr();
+                let mut inner = MaybeUninit::<T>::uninit();
+                inner.write(item);
+                data_ptr.add(write_idx).write(inner);
             }
             self.write_idx.store(next_write_idx, Ordering::Release);
             return true;
@@ -56,14 +62,15 @@ impl<T: Clone> SPSCQueue<T> {
             next_read_idx = 0;
         }
 
-        let mut result = None;
+        let mut result;
+
         unsafe {
-            let data_ref = &*self.data.get();
-            result = data_ref[read_idx].clone();
+            let data_ptr = (*self.buffer.get()).as_ptr();
+            result = Some(data_ptr.add(read_idx).read().assume_init());
         }
 
         self.read_idx.store(next_read_idx, Ordering::Release);
-        return result;
+        result
     }
 }
 
@@ -77,7 +84,7 @@ fn main() {
         });
 
         s.spawn(|| {
-            for i in 0..200 {
+            for _ in 0..200 {
                 loop {
                     if let Some(data) = queue.pop() {
                         println!("{}", data);
