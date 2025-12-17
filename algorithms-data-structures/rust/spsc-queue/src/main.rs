@@ -1,8 +1,7 @@
 use std::cell::UnsafeCell;
-use std::ops::{Deref, DerefMut};
+use std::mem::MaybeUninit;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::mem::MaybeUninit;
 use std::thread;
 
 struct SPSCQueue<T> {
@@ -18,9 +17,7 @@ unsafe impl<T> Sync for SPSCQueue<T> {}
 
 impl<T> SPSCQueue<T> {
     pub fn new(capacity: usize) -> Self {
-        let buffer: Vec<MaybeUninit<T>> = (0..capacity)
-            .map(|_| MaybeUninit::uninit())
-            .collect();
+        let buffer: Vec<MaybeUninit<T>> = (0..capacity).map(|_| MaybeUninit::uninit()).collect();
         SPSCQueue {
             buffer: UnsafeCell::new(buffer),
             capacity,
@@ -48,7 +45,7 @@ impl<T> SPSCQueue<T> {
             return true;
         }
 
-        return false;
+        false
     }
 
     pub fn pop(&self) -> Option<T> {
@@ -62,7 +59,7 @@ impl<T> SPSCQueue<T> {
             next_read_idx = 0;
         }
 
-        let mut result;
+        let result;
 
         unsafe {
             let data_ptr = (*self.buffer.get()).as_ptr();
@@ -79,7 +76,7 @@ fn main() {
     thread::scope(|s| {
         s.spawn(|| {
             for i in 0..200 {
-                while (!queue.push(i)) {}
+                while !queue.push(i) {}
             }
         });
 
